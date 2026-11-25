@@ -19,10 +19,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Health Connect: izinkan membaca data saat dicari dari Health Connect -->
-        <intent-filter>
-            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
-        </intent-filter>
+        <!-- Health Connect: izinkan halaman izin dibuka dari Health Connect -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
