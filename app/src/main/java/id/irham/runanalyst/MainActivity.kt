@@ -2,8 +2,8 @@ package id.irham.runanalyst
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,9 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.PermissionController
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 val DarkBg = Color(0xFF0F172A)
@@ -31,8 +29,6 @@ val TextMuted = Color(0xFF94A3B8)
 val Accent = Color(0xFFF97316)
 val Blue = Color(0xFF38BDF8)
 val Green = Color(0xFF22C55E)
-val Red = Color(0xFFEF4444)
-val Yellow = Color(0xFFEAB308)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,27 +41,16 @@ class MainActivity : ComponentActivity() {
 fun RunAnalystApp() {
     val context = LocalContext.current
     val manager = remember { HealthConnectManager(context) }
+    val scope = rememberCoroutineScope()
     var runs by remember { mutableStateOf<List<RunActivity>>(emptyList()) }
     var status by remember { mutableStateOf("Memeriksa Health Connect…") }
-    var loaded by remember { mutableStateOf(false) }
     var needPermission by remember { mutableStateOf(false) }
 
-    // Kontrak resmi Health Connect untuk minta izin
-    val permLauncher = rememberLauncherForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) { granted ->
-        if (granted.containsAll(manager.permissions)) load() else {
-            status = "Izin ditolak. Data lari tidak bisa dibaca tanpa izin Health Connect."
-            needPermission = true
-        }
-    }
-
-    fun load() {
-        (context as? MainActivity)?.lifecycleScope?.launch {
+    fun loadRuns() {
+        scope.launch {
             when {
-                !manager.isAvailable() -> {
+                !manager.isAvailable() ->
                     status = "Health Connect tidak tersedia di HP ini. Pasang dari Play Store: \"Health Connect\"."
-                }
                 !manager.hasPermissions() -> {
                     status = "Butuh izin Health Connect untuk membaca data lari."
                     needPermission = true
@@ -76,15 +61,24 @@ fun RunAnalystApp() {
                     status = ""
                 }
             }
-            loaded = true
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    val permLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        if (granted.containsAll(manager.permissions)) loadRuns()
+        else {
+            status = "Izin ditolak. Data lari tidak bisa dibaca tanpa izin Health Connect."
+            needPermission = true
+        }
+    }
+
+    LaunchedEffect(Unit) { loadRuns() }
 
     MaterialTheme(colorScheme = darkColorScheme()) {
         Surface(Modifier.fillMaxSize(), color = DarkBg) {
-            if (!loaded || status.isNotEmpty()) {
+            if (status.isNotEmpty()) {
                 Column(
                     Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.Center,
@@ -119,7 +113,7 @@ fun Dashboard(runs: List<RunActivity>) {
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatCard("Jarak minggu ini", "${fmt1(last.km)} km", "${if (last.km >= prev.km) "▲" else "▼"} vs minggu lalu", Modifier.weight(1f))
+                StatCard("Jarak minggu ini", "${fmt1(last.km)} km", "vs minggu lalu: ${fmt1(prev.km)} km", Modifier.weight(1f))
                 StatCard("Pace rata-rata", fmtPace(last.pace), "minggu ini", Modifier.weight(1f))
             }
         }
@@ -217,7 +211,7 @@ fun RecRow(r: Recommendation) {
 
 @Composable
 fun BarChart(values: List<Double>, labels: List<String>, target: Double, barColor: Color = Blue) {
-    val max = (values.maxOrNull() ?: 0.0).coerceAtLeast(target).coerceAtLeast(0.1) * 1.15
+    val max = ((values.maxOrNull() ?: 0.0).coerceAtLeast(target).coerceAtLeast(0.1)) * 1.15
     Column {
         BoxWithConstraints(Modifier.fillMaxWidth().height(180.dp)) {
             val h = maxHeight
@@ -246,7 +240,8 @@ fun BarChart(values: List<Double>, labels: List<String>, target: Double, barColo
         }
         Row(Modifier.fillMaxWidth()) {
             labels.forEach {
-                Text(it, color = TextMuted, fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(it, color = TextMuted, fontSize = 8.sp, modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         }
     }

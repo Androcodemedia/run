@@ -12,6 +12,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 /** Satu sesi lari yang sudah dirapikan. */
 data class RunActivity(
@@ -45,13 +46,8 @@ class HealthConnectManager(private val context: Context) {
 
     private fun client() = HealthConnectClient.getOrCreate(context)
 
-    suspend fun hasPermissions(): Boolean = client().permissionController.grantedPermissions.containsAll(permissions)
-
-    suspend fun requestPermissions(): Boolean {
-        val c = client()
-        val granted = c.permissionController.requestGrantedPermissions(permissions)
-        return granted.containsAll(permissions)
-    }
+    suspend fun hasPermissions(): Boolean =
+        client().permissionController.getGrantedPermissions().containsAll(permissions)
 
     /** Baca semua sesi lari (EXERCISE_TYPE_RUNNING) dalam N hari terakhir. */
     suspend fun readRuns(daysBack: Long = 180): List<RunActivity> {
@@ -78,9 +74,9 @@ class HealthConnectManager(private val context: Context) {
             RunActivity(
                 date = s.startTime.atZone(zone).toLocalDate(),
                 name = s.metadata.dataOrigin.packageName.substringAfterLast('.'),
-                distanceKm = Math.round(km * 10) / 10.0,
-                movingMinutes = Math.round(minutes),
-                avgHr = if (hrs.isNotEmpty()) hrs.map { it.toInt() }.average().toInt() else 0,
+                distanceKm = (km * 10).roundToInt() / 10.0,
+                movingMinutes = minutes.roundToInt().toDouble(),
+                avgHr = if (hrs.isNotEmpty()) hrs.map { it.toInt() }.average().roundToInt() else 0,
             )
         }.filter { it.distanceKm >= 0.5 }.sortedBy { it.date }
     }
